@@ -145,7 +145,7 @@ class ReductionCell(nn.Module):
             x = self.pool(x)
         shortcut = x
         PRM_x, _ = self.PRM(x)
-        H, W = H // self.downsample_ratios, W // self.downsample_ratios
+        H, W = math.ceil(H/self.downsample_ratios), math.ceil(W/self.downsample_ratios)
         B, N, C = PRM_x.shape
         assert N == H * W
         if self.tokens_type == 'window':
