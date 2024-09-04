@@ -4,6 +4,7 @@
   <a href="#Introduction">Introduction</a> |
   <a href="#News">News</a> |
   <a href="#Installation">Installation</a> |
+  <a href="#Weights">Weights</a> |
   <a href="#Citation">Citation</a> |
   <a href="#Acknowledgement">Acknowledgement</a>
 </p >
@@ -30,6 +31,10 @@ git clone https://github.com/maps-as-data/MapTextPipeline.git
 cd MapTextPipeline
 pip install -v .
 ```
+
+## Weights
+
+Fine-tuned model weights can be downloaded from: https://drive.google.com/file/d/1Okvl5tlWusJxDCdDv_CLsGKQ5elImfx4/view?usp=drive_link
 
 ## Citation
 
