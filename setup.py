@@ -16,8 +16,8 @@ def get_extensions():
     extensions_dir = os.path.join(this_dir, "adet", "layers", "csrc")
 
     sources = []
-    sources += os.path.join(extensions_dir, "vision.cpp")
-    sources += os.path.join(extensions_dir, "DeformAttn", "cpu", "ms_deform_attn_cpu.cpp")
+    sources.append(os.path.join(extensions_dir, "vision.cpp"))
+    sources.append(os.path.join(extensions_dir, "DeformAttn", "cpu", "ms_deform_attn_cpu.cpp"))
     source_cuda = [
         os.path.join(extensions_dir, "cuda_version.cu"),
         os.path.join(extensions_dir, "DeformAttn", "cuda", "ms_deform_attn_cuda.cu"),
