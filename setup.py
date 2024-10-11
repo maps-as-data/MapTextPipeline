@@ -15,13 +15,13 @@ def get_extensions():
     this_dir = os.path.dirname(os.path.abspath(__file__))
     extensions_dir = os.path.join(this_dir, "adet", "layers", "csrc")
 
-    main_source = os.path.join(extensions_dir, "vision.cpp")
-    sources = glob.glob(os.path.join(extensions_dir, "**", "*.cpp"))
-    source_cuda = glob.glob(os.path.join(extensions_dir, "**", "*.cu")) + glob.glob(
-        os.path.join(extensions_dir, "*.cu")
-    )
-
-    sources = [main_source] + sources
+    sources = []
+    sources += os.path.join(extensions_dir, "vision.cpp")
+    sources += os.path.join(extensions_dir, "DeformAttn", "cpu", "ms_deform_attn_cpu.cpp")
+    source_cuda = [
+        os.path.join(extensions_dir, "cuda_version.cu"),
+        os.path.join(extensions_dir, "DeformAttn", "cuda", "ms_deform_attn_cuda.cu"),
+    ]
 
     extension = CppExtension
 
