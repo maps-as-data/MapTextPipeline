@@ -13,7 +13,7 @@ __pycache__
 _ext
 *.pyc
 *.so
-AdelaiDet.egg-info/
+MapTextPipeline.egg-info/
 build/
 dist/
 
