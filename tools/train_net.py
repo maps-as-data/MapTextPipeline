@@ -40,11 +40,11 @@ from detectron2.solver.build import maybe_add_gradient_clipping
 from detectron2.modeling import GeneralizedRCNNWithTTA
 from detectron2.utils.logger import setup_logger
 
-from adet.data.dataset_mapper import DatasetMapperWithBasis
-from adet.config import get_cfg
-from adet.checkpoint import AdetCheckpointer
-from adet.evaluation import TextEvaluator
-from adet.modeling import swin, vitae_v2
+from maptextpipeline.data.dataset_mapper import DatasetMapperWithBasis
+from maptextpipeline.config import get_cfg
+from maptextpipeline.checkpoint import AdetCheckpointer
+from maptextpipeline.evaluation import TextEvaluator
+from maptextpipeline.modeling import swin, vitae_v2
 
 
 class Trainer(DefaultTrainer):
@@ -81,7 +81,7 @@ class Trainer(DefaultTrainer):
         Args:
             start_iter, max_iter (int): See docs above
         """
-        logger = logging.getLogger("adet.trainer")
+        logger = logging.getLogger("maptextpipeline.trainer")
         # param = sum(p.numel() for p in self.model.parameters())
         # logger.info(f"Model Params: {param}")
         logger.info("Starting training from iteration {}".format(start_iter))
@@ -177,7 +177,7 @@ class Trainer(DefaultTrainer):
 
     @classmethod
     def test_with_TTA(cls, cfg, model):
-        logger = logging.getLogger("adet.trainer")
+        logger = logging.getLogger("maptextpipeline.trainer")
         # In the end of training, run an evaluation with TTA
         # Only support some R-CNN models.
         logger.info("Running inference with test-time augmentation ...")
@@ -225,7 +225,7 @@ class Trainer(DefaultTrainer):
         for key, value in model.named_parameters(recurse=True):
         # ===================================================================
             if cfg.MODEL.TRANSFORMER.FROZEN == True:    
-                # tmlp_head is a model component in adet/layers/deformable_transformer.py/line 483, not in use here
+                # tmlp_head is a model component in maptextpipeline/layers/deformable_transformer.py/line 483, not in use here
                 #
                 if key in unloaded_params or 'external_tmlp_head' in key:
                     # Keep these parameters trainable
@@ -295,7 +295,7 @@ def setup(args):
     default_setup(cfg, args)
 
     rank = comm.get_rank()
-    setup_logger(cfg.OUTPUT_DIR, distributed_rank=rank, name="adet")
+    setup_logger(cfg.OUTPUT_DIR, distributed_rank=rank, name="maptextpipeline")
 
     return cfg
 

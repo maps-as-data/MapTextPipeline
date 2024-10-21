@@ -1,7 +1,7 @@
 #include <cuda_runtime_api.h>
 
-namespace adet {
+namespace maptextpipeline {
 int get_cudart_version() {
   return CUDART_VERSION;
 }
-} // namespace adet
+} // namespace maptextpipeline

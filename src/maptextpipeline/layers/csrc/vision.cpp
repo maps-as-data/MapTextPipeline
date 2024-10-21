@@ -1,7 +1,7 @@
 // Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 #include "DeformAttn/ms_deform_attn.h"
 
-namespace adet {
+namespace maptextpipeline {
 
 #ifdef WITH_CUDA
 extern int get_cudart_version();
@@ -54,4 +54,4 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   m.def("ms_deform_attn_backward", &ms_deform_attn_backward, "ms_deform_attn_backward");
 }
 
-} // namespace adet
+} // namespace maptextpipeline

@@ -13,12 +13,12 @@ from detectron2.engine.defaults import DefaultPredictor
 from detectron2.utils.video_visualizer import VideoVisualizer
 from detectron2.utils.visualizer import ColorMode, Visualizer
 
-from adet.utils.visualizer import TextVisualizer
-from adet.modeling import swin, vitae_v2
+from maptextpipeline.utils.visualizer import TextVisualizer
+from maptextpipeline.modeling import swin, vitae_v2
 from detectron2.modeling import build_model
 from detectron2.checkpoint import DetectionCheckpointer
 import detectron2.data.transforms as T
-from adet.data.augmentation import Pad
+from maptextpipeline.data.augmentation import Pad
 
 
 class VisualizationDemo(object):
