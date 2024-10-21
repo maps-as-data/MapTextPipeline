@@ -5,10 +5,10 @@ from detectron2.data import MetadataCatalog
 from detectron2.modeling import build_model
 from detectron2.checkpoint import DetectionCheckpointer
 import detectron2.data.transforms as T
-from adet.data.augmentation import Pad
+from maptextpipeline.data.augmentation import Pad
 
 # to register backbone
-from adet.modeling import vitae_v2
+from maptextpipeline.modeling import vitae_v2
 
 
 class ViTAEPredictor:

@@ -2,8 +2,9 @@
 # -*- coding: utf-8 -*-
 # encoding=utf8
 from collections import namedtuple
-from adet.evaluation import rrc_evaluation_funcs_ic15 as rrc_evaluation_funcs
+from maptextpipeline.evaluation import rrc_evaluation_funcs
 import importlib
+import re
 import sys
 
 import math 
@@ -20,22 +21,33 @@ def evaluation_imports():
             'numpy':'np'
             }
 
-def default_evaluation_params():
+def default_evaluation_params(dataset_type=None):
     """
-    default_evaluation_params: Default parameters to use for the validation and evaluation.
-    """          
-    global WORD_SPOTTING
+    Default parameters to use for the validation and evaluation.
+    :param dataset_type: Optional; specifies the type of dataset to adjust parameters for different filename conventions.
+    """
+    global WORD_SPOTTING          
+    # Define filename patterns based on the dataset type
+    if 'rumsey' in dataset_type:
+        gt_sample_name_2_id = r'\d+_[a-z]\d+_w\d+\.txt'
+        det_sample_name_2_id = r'\d+_[a-z]\d+_w\d+\.txt'
+    else:
+        gt_sample_name_2_id = r'([0-9]+)\.txt'
+        det_sample_name_2_id = r'([0-9]+)\.txt'
+
     return {
             'IOU_CONSTRAINT' :0.5,
             'AREA_PRECISION_CONSTRAINT' :0.5,
             'WORD_SPOTTING' :WORD_SPOTTING,
             'MIN_LENGTH_CARE_WORD' :3,
-            'GT_SAMPLE_NAME_2_ID':'gt_img_([0-9]+).txt',
-            'DET_SAMPLE_NAME_2_ID':'res_img_([0-9]+).txt',            
+            # 'GT_SAMPLE_NAME_2_ID':'([0-9]+).txt',
+            # 'DET_SAMPLE_NAME_2_ID':'([0-9]+).txt',  
+            'GT_SAMPLE_NAME_2_ID':gt_sample_name_2_id,
+            'DET_SAMPLE_NAME_2_ID':det_sample_name_2_id,         
             'LTRB':False, #LTRB:2points(left,top,right,bottom) or 4 points(x1,y1,x2,y2,x3,y3,x4,y4)
             'CRLF':False, # Lines are delimited by Windows CRLF format
             'CONFIDENCES':False, #Detections must include confidence value. MAP and MAR will be calculated,
-            'SPECIAL_CHARACTERS':'!?.:,*"()·[]/\'',
+            'SPECIAL_CHARACTERS':str('!?.:,*"()·[]/\''),
             'ONLY_REMOVE_FIRST_LAST_CHARACTER' : True
         }
 
@@ -46,10 +58,17 @@ def validate_data(gtFilePath, submFilePath, evaluationParams):
                             If some error detected, the method raises the error
     """
     gt = rrc_evaluation_funcs.load_zip_file(gtFilePath, evaluationParams['GT_SAMPLE_NAME_2_ID'])
+    
     subm = rrc_evaluation_funcs.load_zip_file(submFilePath, evaluationParams['DET_SAMPLE_NAME_2_ID'], True)
-    #Validate format of GroundTruth
+
+    # if 'rumsey' in gtFilePath:
+    #     # datasets/evaluation/gt_rumsey.zip     ([0-9]+).txt
+    #     gt = rrc_evaluation_funcs.load_zip_file(gtFilePath, '\d+_[a-z]\d+_w\d+\.txt') 
+    #     # ('det.zip', '([0-9]+).txt', True)
+    #     subm = rrc_evaluation_funcs.load_zip_file(submFilePath, '\d+_[a-z]\d+_w\d+\.txt', True)
+    # #Validate format of GroundTruth
     for k in gt:
-        rrc_evaluation_funcs.validate_lines_in_file(k,gt[k],evaluationParams['CRLF'],evaluationParams['LTRB'],True)
+        rrc_evaluation_funcs.validate_lines_in_file_gt(k,gt[k],evaluationParams['CRLF'],evaluationParams['LTRB'],True)
 
     #Validate format of results
     for k in subm:
@@ -69,28 +88,18 @@ def evaluate_method(gtFilePath, submFilePath, evaluationParams):
     for module,alias in evaluation_imports().items():
         globals()[alias] = importlib.import_module(module)
 
-    def polygon_from_points(points,correctOffset=False):
+    def polygon_from_points(points):
         """
         Returns a Polygon object to use with the Polygon2 class from a list of 8 points: x1,y1,x2,y2,x3,y3,x4,y4
         """        
-        
-        if correctOffset: #this will substract 1 from the coordinates that correspond to the xmax and ymax
-            points[2] -= 1
-            points[4] -= 1
-            points[5] -= 1
-            points[7] -= 1
-            
-        resBoxes=np.empty([1,8],dtype='int32')
-        resBoxes[0,0]=int(points[0])
-        resBoxes[0,4]=int(points[1])
-        resBoxes[0,1]=int(points[2])
-        resBoxes[0,5]=int(points[3])
-        resBoxes[0,2]=int(points[4])
-        resBoxes[0,6]=int(points[5])
-        resBoxes[0,3]=int(points[6])
-        resBoxes[0,7]=int(points[7])
-        pointMat = resBoxes[0].reshape([2,4]).T
-        return plg.Polygon( pointMat)
+        num_points = len(points)
+        # resBoxes=np.empty([1,num_points],dtype='int32')
+        resBoxes=np.empty([1,num_points],dtype='float32')
+        for inp in range(0, num_points, 2):
+            resBoxes[0, int(inp/2)] = float(points[int(inp)])
+            resBoxes[0, int(inp/2+num_points/2)] = float(points[int(inp+1)])
+        pointMat = resBoxes[0].reshape([2,int(num_points/2)]).T
+        return plg.Polygon(pointMat)    
 
     def rectangle_to_polygon(rect):
         resBoxes=np.empty([1,8],dtype='int32')
@@ -148,7 +157,7 @@ def evaluate_method(gtFilePath, submFilePath, evaluationParams):
             
         return AP  
     
-    def transcription_match(transGt,transDet,specialCharacters='!?.:,*"()·[]/\'',onlyRemoveFirstLastCharacterGT=True):
+    def transcription_match(transGt,transDet,specialCharacters=str(r'!?.:,*"()·[]/\''),onlyRemoveFirstLastCharacterGT=True):
         
         if onlyRemoveFirstLastCharacterGT:
             #special characters in GT are allowed only at initial or final position
@@ -195,7 +204,7 @@ def evaluate_method(gtFilePath, submFilePath, evaluationParams):
         #hypens at init or final of the word
         transcription = transcription.strip('-');
         
-        specialCharacters = "'!?.:,*\"()·[]/";
+        specialCharacters = str("'!?.:,*\"()·[]/");
         for character in specialCharacters:
             transcription = transcription.replace(character,' ')
         
@@ -207,7 +216,7 @@ def evaluate_method(gtFilePath, submFilePath, evaluationParams):
         if len(transcription) < evaluationParams['MIN_LENGTH_CARE_WORD']:
             return False;
         
-        notAllowed = "×÷·";
+        notAllowed = str("×÷·");
         
         range1 = [ ord(u'a'), ord(u'z') ]
         range2 = [ ord(u'A'), ord(u'Z') ]
@@ -238,7 +247,7 @@ def evaluate_method(gtFilePath, submFilePath, evaluationParams):
         #hypens at init or final of the word
         transcription = transcription.strip('-');            
         
-        specialCharacters = "'!?.:,*\"()·[]/";
+        specialCharacters = str("'!?.:,*\"()·[]/");
         for character in specialCharacters:
             transcription = transcription.replace(character,' ')
         
@@ -250,22 +259,22 @@ def evaluate_method(gtFilePath, submFilePath, evaluationParams):
     
     matchedSum = 0
     det_only_matchedSum = 0
-    
+
     Rectangle = namedtuple('Rectangle', 'xmin ymin xmax ymax')
     
     gt = rrc_evaluation_funcs.load_zip_file(gtFilePath,evaluationParams['GT_SAMPLE_NAME_2_ID'])
     subm = rrc_evaluation_funcs.load_zip_file(submFilePath,evaluationParams['DET_SAMPLE_NAME_2_ID'],True)
-   
+
     numGlobalCareGt = 0;
     numGlobalCareDet = 0;
     det_only_numGlobalCareGt = 0;
     det_only_numGlobalCareDet = 0;
-
+   
     arrGlobalConfidences = [];
     arrGlobalMatches = [];
 
     for resFile in gt:
-        
+        # print('resgt', resFile)
         gtFile = rrc_evaluation_funcs.decode_utf8(gt[resFile])
         if (gtFile is None) :
             raise Exception("The file %s is not UTF-8" %resFile)        
@@ -292,14 +301,12 @@ def evaluate_method(gtFilePath, submFilePath, evaluationParams):
         arrSampleConfidences = [];
         arrSampleMatch = [];
         sampleAP = 0;
-        
-        evaluationLog = ""
 
         pointsList,_,transcriptionsList = rrc_evaluation_funcs.get_tl_line_values_from_file_contents(gtFile,evaluationParams['CRLF'],evaluationParams['LTRB'],True,False)
+
         for n in range(len(pointsList)):
             points = pointsList[n]
             transcription = transcriptionsList[n]
-            # dontCare = transcription == "###"
             det_only_dontCare = dontCare = transcription == "###" # ctw1500 and total_text gt have been modified to the same format.
             if evaluationParams['LTRB']:
                 gtRect = Rectangle(*points)
@@ -323,13 +330,12 @@ def evaluate_method(gtFilePath, submFilePath, evaluationParams):
             if det_only_dontCare:
                 det_only_gtDontCarePolsNum.append( len(gtPols)-1 ) 
 
-        evaluationLog += "GT polygons: " + str(len(gtPols)) + (" (" + str(len(gtDontCarePolsNum)) + " don't care)\n" if len(gtDontCarePolsNum)>0 else "\n")
         
         if resFile in subm:
             
             detFile = rrc_evaluation_funcs.decode_utf8(subm[resFile]) 
                     
-            pointsList,confidencesList,transcriptionsList = rrc_evaluation_funcs.get_tl_line_values_from_file_contents(detFile,evaluationParams['CRLF'],evaluationParams['LTRB'],True,evaluationParams['CONFIDENCES'])
+            pointsList,confidencesList,transcriptionsList = rrc_evaluation_funcs.get_tl_line_values_from_file_contents_det(detFile,evaluationParams['CRLF'],evaluationParams['LTRB'],True,evaluationParams['CONFIDENCES'])
             
             for n in range(len(pointsList)):
                 points = pointsList[n]
@@ -353,8 +359,7 @@ def evaluate_method(gtFilePath, submFilePath, evaluationParams):
                         if (precision > evaluationParams['AREA_PRECISION_CONSTRAINT'] ):
                             detDontCarePolsNum.append( len(detPols)-1 )
                             break
-                            
-                
+
                 if len(det_only_gtDontCarePolsNum)>0 :
                     for dontCarePol in det_only_gtDontCarePolsNum:
                         dontCarePol = gtPols[dontCarePol]
@@ -364,8 +369,7 @@ def evaluate_method(gtFilePath, submFilePath, evaluationParams):
                         if (precision > evaluationParams['AREA_PRECISION_CONSTRAINT'] ):
                             det_only_detDontCarePolsNum.append( len(detPols)-1 )
                             break
-
-            evaluationLog += "DET polygons: " + str(len(detPols)) + (" (" + str(len(detDontCarePolsNum)) + " don't care)\n" if len(detDontCarePolsNum)>0 else "\n")
+                                 
             
             if len(gtPols)>0 and len(detPols)>0:
                 #Calculate IoU and precision matrixs
@@ -380,7 +384,7 @@ def evaluate_method(gtFilePath, submFilePath, evaluationParams):
                         pG = gtPols[gtNum]
                         pD = detPols[detNum]
                         iouMat[gtNum,detNum] = get_intersection_over_union(pD,pG)
-
+                
                 for gtNum in range(len(gtPols)):
                     for detNum in range(len(detPols)):
                         if gtRectMat[gtNum] == 0 and detRectMat[detNum] == 0 and gtNum not in gtDontCarePolsNum and detNum not in detDontCarePolsNum :
@@ -388,16 +392,24 @@ def evaluate_method(gtFilePath, submFilePath, evaluationParams):
                                 gtRectMat[gtNum] = 1
                                 detRectMat[detNum] = 1
                                 #detection matched only if transcription is equal
+                                # det_only_correct = True
+                                # detOnlyCorrect += 1
                                 if evaluationParams['WORD_SPOTTING']:
-                                    correct = gtTrans[gtNum].upper() == detTrans[detNum].upper()
+                                    edd = string_metric.levenshtein(gtTrans[gtNum].upper(), detTrans[detNum].upper())
+                                    if edd<=0: 
+                                        correct = True
+                                    else:
+                                        correct = False
+                                    # correct = gtTrans[gtNum].upper() == detTrans[detNum].upper()
                                 else:
-                                    correct = transcription_match(gtTrans[gtNum].upper(),detTrans[detNum].upper(),evaluationParams['SPECIAL_CHARACTERS'],evaluationParams['ONLY_REMOVE_FIRST_LAST_CHARACTER'])==True
+                                    try:
+                                        correct = transcription_match(gtTrans[gtNum].upper(),detTrans[detNum].upper(),evaluationParams['SPECIAL_CHARACTERS'],evaluationParams['ONLY_REMOVE_FIRST_LAST_CHARACTER'])==True
+                                    except: # empty
+                                        correct = False
                                 detCorrect += (1 if correct else 0)
                                 if correct:
                                     detMatchedNums.append(detNum)
-                                pairs.append({'gt':gtNum,'det':detNum,'correct':correct})
-                                evaluationLog += "Match GT #" + str(gtNum) + " with Det #" + str(detNum) + " trans. correct: " + str(correct) + "\n"
-
+                
                 for gtNum in range(len(gtPols)):
                     for detNum in range(len(detPols)):
                         if det_only_gtRectMat[gtNum] == 0 and det_only_detRectMat[detNum] == 0 and gtNum not in det_only_gtDontCarePolsNum and detNum not in det_only_detDontCarePolsNum:
@@ -407,18 +419,7 @@ def evaluate_method(gtFilePath, submFilePath, evaluationParams):
                                 #detection matched only if transcription is equal
                                 det_only_correct = True
                                 detOnlyCorrect += 1
-
-            if evaluationParams['CONFIDENCES']:
-                for detNum in range(len(detPols)):
-                    if detNum not in detDontCarePolsNum :
-                        #we exclude the don't care detections
-                        match = detNum in detMatchedNums
-
-                        arrSampleConfidences.append(confidencesList[detNum])
-                        arrSampleMatch.append(match)
-
-                        arrGlobalConfidences.append(confidencesList[detNum]);
-                        arrGlobalMatches.append(match);                                
+                                                              
                 
         numGtCare = (len(gtPols) - len(gtDontCarePolsNum))
         numDetCare = (len(detPols) - len(detDontCarePolsNum))
@@ -427,12 +428,9 @@ def evaluate_method(gtFilePath, submFilePath, evaluationParams):
         if numGtCare == 0:
             recall = float(1)
             precision = float(0) if numDetCare >0 else float(1)
-            sampleAP = precision
         else:
             recall = float(detCorrect) / numGtCare
             precision = 0 if numDetCare==0 else float(detCorrect) / numDetCare
-            if evaluationParams['CONFIDENCES']:
-                sampleAP = compute_ap(arrSampleConfidences, arrSampleMatch, numGtCare )                    
 
         if det_only_numGtCare == 0:
             det_only_recall = float(1)
@@ -441,9 +439,10 @@ def evaluate_method(gtFilePath, submFilePath, evaluationParams):
             det_only_recall = float(detOnlyCorrect) / det_only_numGtCare
             det_only_precision = 0 if det_only_numDetCare==0 else float(detOnlyCorrect) / det_only_numDetCare
 
+        
         hmean = 0 if (precision + recall)==0 else 2.0 * precision * recall / (precision + recall)
         det_only_hmean = 0 if (det_only_precision + det_only_recall)==0 else 2.0 * det_only_precision * det_only_recall / (det_only_precision + det_only_recall)
-
+            
         matchedSum += detCorrect
         det_only_matchedSum += detOnlyCorrect
         numGlobalCareGt += numGtCare
@@ -455,8 +454,6 @@ def evaluate_method(gtFilePath, submFilePath, evaluationParams):
                                         'precision':precision,
                                         'recall':recall,
                                         'hmean':hmean,
-                                        'pairs':pairs,
-                                        'AP':sampleAP,
                                         'iouMat':[] if len(detPols)>100 else iouMat.tolist(),
                                         'gtPolPoints':gtPolPoints,
                                         'detPolPoints':detPolPoints,
@@ -465,14 +462,9 @@ def evaluate_method(gtFilePath, submFilePath, evaluationParams):
                                         'gtDontCare':gtDontCarePolsNum,
                                         'detDontCare':detDontCarePolsNum,
                                         'evaluationParams': evaluationParams,
-                                        'evaluationLog': evaluationLog     
                                     }
         
-    # Compute AP
-    AP = 0
-    if evaluationParams['CONFIDENCES']:
-        AP = compute_ap(arrGlobalConfidences, arrGlobalMatches, numGlobalCareGt)
-
+    
     methodRecall = 0 if numGlobalCareGt == 0 else float(matchedSum)/numGlobalCareGt
     methodPrecision = 0 if numGlobalCareDet == 0 else float(matchedSum)/numGlobalCareDet
     methodHmean = 0 if methodRecall + methodPrecision==0 else 2* methodRecall * methodPrecision / (methodRecall + methodPrecision)
@@ -481,21 +473,17 @@ def evaluate_method(gtFilePath, submFilePath, evaluationParams):
     det_only_methodPrecision = 0 if det_only_numGlobalCareDet == 0 else float(det_only_matchedSum)/det_only_numGlobalCareDet
     det_only_methodHmean = 0 if det_only_methodRecall + det_only_methodPrecision==0 else 2* det_only_methodRecall * det_only_methodPrecision / (det_only_methodRecall + det_only_methodPrecision)
 
+    
     methodMetrics = r"E2E_RESULTS: precision: {}, recall: {}, hmean: {}".format(methodPrecision, methodRecall, methodHmean)
     det_only_methodMetrics = r"DETECTION_ONLY_RESULTS: precision: {}, recall: {}, hmean: {}".format(det_only_methodPrecision, det_only_methodRecall, det_only_methodHmean)
-
-    resDict = {'calculated':True,'Message':'','e2e_method': methodMetrics, 'det_only_method': det_only_methodMetrics, 'per_sample': perSampleMetrics}
+    
+    
+    resDict = {'calculated':True,'Message':'','e2e_method': methodMetrics,'det_only_method': det_only_methodMetrics,'per_sample': perSampleMetrics}
     
     
     return resDict;
 
-
-
-def text_eval_main_ic15(det_file, gt_file, is_word_spotting):
+def text_eval_main(det_file, gt_file, is_word_spotting):
     global WORD_SPOTTING
     WORD_SPOTTING = is_word_spotting
-    p = {
-        'g': gt_file,  
-        's': det_file
-    }
-    return rrc_evaluation_funcs.main_evaluation(p,default_evaluation_params,validate_data,evaluate_method)
+    return rrc_evaluation_funcs.main_evaluation(None,det_file, gt_file, default_evaluation_params,validate_data,evaluate_method)

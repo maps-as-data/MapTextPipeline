@@ -19,8 +19,8 @@ from detectron2.evaluation.evaluator import DatasetEvaluator
 import glob
 import shutil
 from shapely.geometry import Polygon, LinearRing
-from adet.evaluation import text_eval_script
-from adet.evaluation import text_eval_script_ic15
+from maptextpipeline.evaluation import text_eval_script
+from maptextpipeline.evaluation import text_eval_script_ic15
 import zipfile
 import pickle
 import editdistance
