@@ -13,7 +13,7 @@ assert torch_ver >= [1, 3], "Requires PyTorch >= 1.3"
 
 def get_extensions():
     this_dir = os.path.dirname(os.path.abspath(__file__))
-    extensions_dir = os.path.join(this_dir, "maptextpipeline", "layers", "csrc")
+    extensions_dir = os.path.join(this_dir, "src", "maptextpipeline", "layers", "csrc")
 
     sources = []
     sources.append(os.path.join(extensions_dir, "vision.cpp"))
