@@ -1,6 +1,7 @@
-from detectron2.config.defaults import _C
+from detectron2.config.defaults import _C as _C_DEFAULT
 from detectron2.config import CfgNode as CN
 
+_C = _C_DEFAULT.clone()
 
 # ---------------------------------------------------------------------------- #
 # Additional Configs
